@@ -1,0 +1,14 @@
+node_modules/
+.env
+reports/
+screenshots/
+*.log
+.DS_Store
+coverage/
+dist/
+build/
+*.tmp
+test-results/
+playwright-report/
+.features-cache/
+features

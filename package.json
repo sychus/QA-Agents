@@ -1,0 +1,49 @@
+{
+  "name": "qa-agents",
+  "version": "1.0.0",
+  "description": "IA Agents for Automated Testing",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "ts-node src/index.ts",
+    "test": "ts-node src/index.ts run",
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "qa",
+    "testing",
+    "automation",
+    "ai",
+    "agents",
+    "gherkin",
+    "salesforce",
+    "angular"
+  ],
+  "author": "Hugo Sychus",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.9.1",
+    "@cucumber/gherkin": "^26.0.3",
+    "@cucumber/messages": "^22.0.0",
+    "axios": "^1.6.2",
+    "chalk": "^4.1.2",
+    "commander": "^11.1.0",
+    "dotenv": "^16.3.1",
+    "jsforce": "^2.0.0-beta.21",
+    "openai": "^4.20.1",
+    "ora": "^5.4.1",
+    "playwright": "^1.40.1",
+    "selenium-webdriver": "^4.15.0"
+  },
+  "devDependencies": {
+    "@types/chalk": "^0.4.31",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.19.25",
+    "@types/ora": "^3.1.0",
+    "@types/ws": "^8.18.1",
+    "@types/yargs": "^17.0.35",
+    "jest": "^29.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}

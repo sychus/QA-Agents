@@ -1,0 +1,74 @@
+# ============================================
+# AI Configuration (REQUIRED)
+# ============================================
+# Get your API key from: https://platform.openai.com
+OPENAI_API_KEY=your_openai_key_here
+OPENAI_MODEL=gpt-4-turbo
+
+# ============================================
+# Vision AI Configuration (RECOMMENDED)
+# ============================================
+# Enable Vision AI for intelligent element detection
+# When enabled, GPT-4o Vision analyzes screenshots to find elements
+# This eliminates hardcoded selectors and adapts to UI changes
+# Set to false to use basic selector-based approach
+USE_VISION=true
+
+# Vision AI Model (gpt-4o-mini is faster and cheaper, gpt-4o is more accurate)
+# Options: gpt-4o-mini (recommended), gpt-4o
+VISION_MODEL=gpt-4o-mini
+
+# Screenshot Optimization (for faster Vision AI calls)
+SCREENSHOT_QUALITY=80
+SCREENSHOT_MAX_WIDTH=1920
+SCREENSHOT_MAX_HEIGHT=1080
+
+# Enable Vision AI result caching (saves API calls and time)
+# Caches Vision AI results by instruction + page hash
+ENABLE_VISION_CACHE=true
+
+# Anthropic Claude (optional, fallback)
+# ANTHROPIC_API_KEY=your_anthropic_key_here
+
+# ============================================
+# Salesforce Configuration (Optional)
+# ============================================
+# Only needed for Salesforce tests
+SF_LOGIN_URL=https://login.salesforce.com
+SF_USERNAME=your_username@example.com
+SF_PASSWORD=your_password
+SF_TOKEN=your_security_token
+SF_INSTANCE_URL=https://your-instance.my.salesforce.com
+
+# ============================================
+# Web Application Configuration
+# ============================================
+# IMPORTANT: Set this to your BASE URL (without specific paths)
+# Example: http://localhost:4200
+# Specific paths will be added in each .feature file
+WEB_APP_URL=http://localhost:4200
+API_BASE_URL=http://localhost:3000
+
+# ============================================
+# Test Execution Configuration
+# ============================================
+# HEADLESS: false = see browser, true = run in background
+HEADLESS=false
+# SLOW_MO: delay in ms between actions (useful for debugging)
+SLOW_MO=100
+# TIMEOUT: maximum time to wait for actions (ms)
+TIMEOUT=30000
+# Take screenshots when tests fail
+SCREENSHOT_ON_FAILURE=true
+
+# ============================================
+# Reporting Configuration
+# ============================================
+REPORT_PATH=./reports
+
+# JIRA Integration (Optional)
+JIRA_INTEGRATION=false
+# JIRA_URL=https://your-company.atlassian.net
+# JIRA_USERNAME=your_email@example.com
+# JIRA_API_TOKEN=your_api_token
+
