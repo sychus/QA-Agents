@@ -7,7 +7,9 @@
     "start": "ts-node src/index.ts",
     "test": "ts-node src/index.ts run",
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "clean:cache": "rm -rf .features-cache",
+    "clean:reports": "rm -rf reports"
   },
   "keywords": [
     "qa",
