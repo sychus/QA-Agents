@@ -6,6 +6,7 @@
   "scripts": {
     "start": "ts-node src/index.ts",
     "test": "ts-node src/index.ts run",
+    "test:force": "ts-node src/index.ts run --force",
     "build": "tsc",
     "clean": "rm -rf dist",
     "clean:cache": "rm -rf .features-cache",

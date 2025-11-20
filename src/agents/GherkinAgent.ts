@@ -8,6 +8,7 @@ import * as crypto from 'crypto';
 interface GherkinAgentConfig {
   cacheDir?: string;
   enableCache?: boolean;
+  forceRegenerate?: boolean;
 }
 
 interface Step {
@@ -46,6 +47,7 @@ export class GherkinAgent {
   private parser: any; // Gherkin.Parser requires complex type argument
   private cacheDir: string;
   private enableCache: boolean;
+  private forceRegenerate: boolean;
 
   constructor(config: GherkinAgentConfig = {}) {
     // Configure OpenAI
@@ -64,6 +66,7 @@ export class GherkinAgent {
     // Configure cache
     this.cacheDir = config.cacheDir || path.join(process.cwd(), '.features-cache');
     this.enableCache = config.enableCache !== false; // Default: true
+    this.forceRegenerate = config.forceRegenerate || false; // Default: false
     
     // Create cache directory if it doesn't exist
     if (this.enableCache && !fs.existsSync(this.cacheDir)) {
@@ -82,8 +85,8 @@ export class GherkinAgent {
     
     const content = fs.readFileSync(featureFilePath, 'utf-8');
     
-    // Check cache first
-    if (this.enableCache) {
+    // Check cache first (skip if force regenerate is enabled)
+    if (this.enableCache && !this.forceRegenerate) {
       const cachedPlan = this.getCachedPlan(featureFilePath, content);
       if (cachedPlan) {
         console.info(`✅ Using cached plan (saved time & API costs!)`);
@@ -93,6 +96,8 @@ export class GherkinAgent {
         await this.generatePlaywrightCode(cachedPlan, featureFilePath);
         return cachedPlan;
       }
+    } else if (this.forceRegenerate) {
+      console.info(`🔄 Force regeneration enabled - bypassing cache`);
     }
     
     const gherkinDocument = this.parseGherkinFile(content);

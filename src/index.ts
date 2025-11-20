@@ -24,6 +24,7 @@ program
   .option('-p, --pattern <pattern>', 'File pattern', '*.feature')
   .option('-t, --tags <tags>', 'Tags to filter (e.g: @web,@critical)')
   .option('-c, --config <config>', 'Configuration file', './config/agents.config.js')
+  .option('-f, --force', 'Force regeneration of cached plans and tests')
   .action(async (features: string[], options: any) => {
     try {
       console.info(chalk.bold.cyan('\n🤖 QA Agents - Intelligent Testing System\n'));
@@ -61,6 +62,11 @@ program
       const config = fs.existsSync(options.config) 
         ? require(path.resolve(options.config))
         : {};
+      
+      // Add force flag to config
+      if (options.force) {
+        config.forceRegenerate = true;
+      }
       
       const orchestrator = new QAOrchestrator(config);
 
