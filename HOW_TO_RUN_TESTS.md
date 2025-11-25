@@ -156,6 +156,96 @@ npm start -- cache --clear
 5. Fix any issues based on diagnostic suggestions
 6. Re-run the test
 
+## Reverse Engineering: Playwright → Gherkin
+
+Convert existing Playwright tests to Gherkin features with AI-powered migration.
+
+### Basic Usage
+
+```bash
+# Convert all tests in ./migrate directory (incremental mode)
+npm run reverse
+
+# Force regeneration of ALL files (useful after improving prompts)
+npm run reverse -- --force
+
+# Convert specific file
+npm run reverse migrate/checkout.spec.ts
+```
+
+### How It Works
+
+1. **Place Playwright tests** in `./migrate/` directory
+2. **Run conversion**: `npm run reverse`
+3. **Review generated Gherkin** in `./features/` directory
+4. **Run tests**: `npm run test`
+
+### Smart Caching
+
+The system tracks processed files with SHA-256 hashes:
+
+- **First run**: Processes all files
+  ```
+  📊 Summary: 5 processed, 0 skipped
+  ```
+
+- **Subsequent runs**: Only processes new/modified files
+  ```
+  📊 Summary: 1 processed, 4 skipped
+  ```
+
+- **Force mode**: Regenerates everything
+  ```bash
+  npm run reverse -- --force
+  📊 Summary: 5 processed, 0 skipped
+  ```
+
+### Generated Gherkin Features
+
+The AI extracts detailed information:
+
+- ✅ **Specific field data** (names, emails, credit cards)
+- ✅ **Exact validation messages** from assertions
+- ✅ **Scenario Outlines** with Examples tables
+- ✅ **Multiple scenarios** (happy/sad/edge cases)
+- ✅ **Auto-generation comment** with timestamp
+
+**Example:**
+
+```gherkin
+# 🤖 Auto-generated from Playwright test
+# Generated on: 2025-11-25T18:30:00.000Z
+
+Feature: Checkout Flow
+  Validate payment processing
+
+@happy-path
+Scenario: Complete checkout with credit card
+  Given I navigate to "http://localhost:4200/checkout"
+  When I fill the following information:
+    | Field       | Value              |
+    | First Name  | John               |
+    | Last Name   | Doe                |
+    | Email       | john@example.com   |
+    | Card Number | 4111111111111111   |
+  And I click on the "Complete Purchase" button
+  Then I should see the message "Payment successful"
+```
+
+### Cache Management
+
+Cache file location: `migrate/.migrate-cache.json`
+
+**When to use `--force`:**
+- After improving AI prompts
+- When you want to regenerate all Gherkin files
+- To ensure latest conversion logic is applied
+
+**Cache benefits:**
+- ⚡ Faster iterations (skips unchanged files)
+- 💰 Cost savings (avoids unnecessary API calls)
+- 🔒 Safe (never touches manually created Gherkin)
+
 ## Getting Help
 
 For more information about the system architecture and capabilities, see:

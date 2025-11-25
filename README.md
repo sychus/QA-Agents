@@ -153,11 +153,14 @@ npm start init
 
 ### 🔄 Reverse Engineering: Migrate Playwright → Gherkin
 
-Convert existing Playwright tests to Gherkin features using AI:
+Convert existing Playwright tests to Gherkin features using AI with **intelligent caching** and **detailed field extraction**:
 
 ```bash
-# Convert all tests in ./migrate directory
+# Convert all tests in ./migrate directory (incremental - only new/changed files)
 npm run reverse
+
+# Force regeneration of ALL files (useful after improving prompts)
+npm run reverse -- --force
 
 # Convert specific file
 npm run reverse path/to/test.spec.ts
@@ -174,16 +177,72 @@ npm start reverse -- --no-preserve-structure
 
 **What it does:**
 - 🤖 Uses AI to infer business intent from technical code
-- 📝 Generates human-readable Gherkin scenarios
+- 📝 Generates **detailed** Gherkin scenarios with specific field data
+- 📊 Creates **Scenario Outlines** with Examples tables for data-driven tests
+- 🎯 Extracts exact validation messages, URLs, and field values
+- 🔄 Generates multiple scenarios (happy path, error cases, edge cases)
 - 🏷️ Preserves tags from test names
 - 📁 Maintains directory structure (optional)
+- ⚡ **Smart caching**: Only processes new or modified files
+- 🔁 **Force mode**: Regenerate all when improving prompts
 - ✅ Creates one `.feature` file per test scenario
 
-**Example:**
+**Example Conversion:**
+
+**Input (Playwright):**
+```javascript
+test('should complete checkout', async ({ page }) => {
+  await page.goto('http://localhost:4200/checkout');
+  await page.fill('#firstName', 'John');
+  await page.fill('#lastName', 'Doe');
+  await page.fill('#email', 'john@example.com');
+  await page.fill('#cardNumber', '4111111111111111');
+  await page.click('button:has-text("Complete Purchase")');
+  await expect(page.getByText('Payment successful')).toBeVisible();
+});
+```
+
+**Output (Gherkin):**
+```gherkin
+# 🤖 Auto-generated from Playwright test
+# Generated on: 2025-11-25T18:30:00.000Z
+
+Feature: Checkout Flow
+  Validate payment processing
+
+@happy-path
+Scenario: Complete checkout with credit card
+  Given I navigate to "http://localhost:4200/checkout"
+  When I fill the following information:
+    | Field       | Value              |
+    | First Name  | John               |
+    | Last Name   | Doe                |
+    | Email       | john@example.com   |
+    | Card Number | 4111111111111111   |
+  And I click on the "Complete Purchase" button
+  Then I should see the message "Payment successful"
+```
+
+**Cache System:**
+- Tracks processed files with SHA-256 hash in `migrate/.migrate-cache.json`
+- Skips unchanged files automatically (saves time and API costs)
+- Use `--force` to regenerate all when you improve AI prompts
+- Never touches manually created Gherkin files
+
+**Usage Example:**
 
 ```bash
 # Place your Playwright tests in ./migrate/
 npm run reverse
+# Output: 📊 Summary: 2 processed, 3 skipped
+
+# Modify one test file and run again
+npm run reverse
+# Output: 📊 Summary: 1 processed, 4 skipped
+
+# Force regenerate everything (e.g., after improving prompts)
+npm run reverse -- --force
+# Output: 📊 Summary: 5 processed, 0 skipped
 
 # Generated Gherkin files will be in ./features/
 # Now you can run them:
@@ -266,9 +325,12 @@ runTests();
 #### 5. **ReverseEngineerAgent** 🆕
 - Converts existing Playwright tests to Gherkin features
 - Uses AI to infer business intent from technical code
+- **Extracts specific field data** (names, emails, credit cards, URLs)
+- **Generates Scenario Outlines** with Examples tables
+- **Creates multiple scenarios** (happy/sad/edge cases)
+- **Smart caching** to avoid regenerating unchanged files
 - Accelerates migration to vision-driven testing
 - Preserves tags and directory structure
-- Generates human-readable scenarios automatically
 
 ## 📊 Reports
 
@@ -451,7 +513,8 @@ qa-agents/
 │   ├── web-event-management.feature
 │   └── salesforce-capacity-service.feature
 ├── migrate/                   # Playwright tests to convert (optional)
-│   └── *.spec.ts
+│   ├── *.spec.ts
+│   └── .migrate-cache.json    # Cache for incremental processing
 ├── src/
 │   ├── agents/
 │   │   ├── GherkinAgent.ts
@@ -522,6 +585,8 @@ jobs:
 - [x] Collaborative orchestrator
 - [x] HTML/JSON reports
 - [x] **Reverse Engineering: Playwright → Gherkin** ✅
+- [x] **Enhanced Gherkin Generation** (detailed fields, Scenario Outlines) ✅
+- [x] **Migration Cache System** (incremental processing) ✅
 - [ ] API Testing Agent
 - [ ] Visual Regression Testing
 - [ ] Jira/TestRail integration

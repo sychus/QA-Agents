@@ -330,12 +330,16 @@ Vision AI serves as the **intelligence layer** that understands UI context and i
 
 ### 5. **ReverseEngineerAgent** (Migration Layer)
 
-The `ReverseEngineerAgent` enables **migration from existing Playwright tests to Gherkin features**. This agent uses AI to analyze technical test code and infer the underlying business intent, automatically generating human-readable Gherkin scenarios.
+The `ReverseEngineerAgent` enables **migration from existing Playwright tests to Gherkin features**. This agent uses AI to analyze technical test code and infer the underlying business intent, automatically generating **detailed, human-readable Gherkin scenarios** with specific field data and Scenario Outlines.
 
 **Purpose:**
 - Convert legacy Playwright tests into maintainable Gherkin features
+- **Extract specific field data** (names, emails, credit cards, URLs)
+- **Generate Scenario Outlines** with Examples tables for data-driven tests
+- **Create multiple scenarios** (happy path, error cases, edge cases)
 - Preserve business logic while adopting the new architecture
 - Accelerate migration to the vision-driven testing approach
+- **Smart caching** to avoid regenerating unchanged files
 
 **How it works:**
 
@@ -348,14 +352,25 @@ The `ReverseEngineerAgent` enables **migration from existing Playwright tests to
 2. **AI-Powered Inference**
    - Sends test code to GPT-4o with specialized prompts
    - AI analyzes technical code to understand business intent
-   - Converts technical actions into natural language steps
+   - **Extracts ALL specific field data** from method calls
+   - Converts technical actions into natural language steps with details
    - Generates Given/When/Then scenarios following Gherkin best practices
+   - **Creates Scenario Outlines** when multiple data sets are detected
+   - **Generates multiple scenarios** for different test paths
 
 3. **Gherkin Generation**
    - Creates one `.feature` file per scenario
+   - **Adds auto-generation comment** with timestamp
    - Preserves directory structure (optional)
    - Maintains tags from original tests
+   - **Supports Scenario Outlines** with Examples tables
    - Formats output following standard Gherkin syntax
+
+4. **Migration Cache System** 🆕
+   - Tracks processed files with SHA-256 hash in `migrate/.migrate-cache.json`
+   - Skips unchanged files automatically (saves time and API costs)
+   - Detects file modifications and reprocesses only changed files
+   - Force regeneration mode available via `--force` flag
 
 **Example Conversion:**
 
@@ -378,16 +393,21 @@ test.describe('Free checkout flow', () => {
 
 **Output (Gherkin):**
 ```gherkin
+# 🤖 Auto-generated from Playwright test
+# Generated on: 2025-11-25T18:30:00.000Z
+
 Feature: Free checkout flow
   Validate free ticket registration without payment gateway
 
+@happy-path
 Scenario: Complete registration without payment
   Given I navigate to the event registration page
   When I select 1 ticket
-  And I fill attendee information:
-    | First Name | John              |
-    | Last Name  | Doe               |
-    | Email      | john@example.com  |
+  And I fill the following attendee information:
+    | Field      | Value            |
+    | First Name | John             |
+    | Last Name  | Doe              |
+    | Email      | john@example.com |
   And I submit the registration
   Then I should see registration success confirmation
 ```
@@ -398,8 +418,11 @@ Scenario: Complete registration without payment
 # Convert a single file
 npm run reverse path/to/test.spec.ts
 
-# Convert entire directory
+# Convert entire directory (incremental - only new/changed files)
 npm run reverse
+
+# Force regeneration of ALL files (useful after improving prompts)
+npm run reverse -- --force
 
 # Specify custom input/output directories
 npm start reverse -- --input ./tests --output ./features
@@ -417,7 +440,8 @@ The agent can be configured programmatically:
 
 ```typescript
 const agent = new ReverseEngineerAgent({
-  preserveStructure: true  // Maintain original directory structure
+  preserveStructure: true,     // Maintain original directory structure
+  forceRegeneration: false     // Set to true to ignore cache
 });
 
 // Process single file
@@ -430,10 +454,14 @@ await agent.processDirectory('./tests', './features');
 **AI Prompt Strategy:**
 
 The agent uses a specialized system prompt that instructs the AI to:
+- **Extract specific field data**: All field names and values from method calls
+- **Create Scenario Outlines**: For parametrized data with Examples tables
+- **Generate multiple scenarios**: Happy path, error cases, edge cases
+- **Preserve exact validation messages**: Include specific text from assertions
+- **Include UI element details**: Button colors, positions, exact wording
 - Understand business context from method names and assertions
 - Create natural language steps readable by non-technical stakeholders
 - Follow Gherkin best practices (Given/When/Then structure)
-- Preserve important details (values, quantities, conditions)
 - Keep steps concise and actionable
 
 **Fallback Mechanism:**
@@ -447,10 +475,15 @@ If AI inference fails (API error, timeout, etc.), the agent falls back to basic 
 **Benefits:**
 
 - ✅ **Accelerated Migration**: Convert hundreds of tests automatically
+- ✅ **Detailed Field Extraction**: Specific data instead of generic steps
+- ✅ **Data-Driven Testing**: Scenario Outlines with Examples tables
+- ✅ **Multiple Test Paths**: Happy/sad/edge case scenarios
 - ✅ **Business Intent Preservation**: AI infers "why" behind technical "how"
 - ✅ **Consistency**: All Gherkin follows same format and best practices
 - ✅ **Tag Preservation**: Maintains test categorization and filtering
 - ✅ **Directory Structure**: Optional preservation of original organization
+- ✅ **Smart Caching**: Only processes new or modified files
+- ✅ **Cost Optimization**: Avoids unnecessary API calls
 - ✅ **Iterative Refinement**: Generated Gherkin can be manually improved
 
 **Workflow Integration:**
@@ -490,6 +523,9 @@ If AI inference fails (API error, timeout, etc.), the agent falls back to basic 
 3. **Batch Processing**: Process entire directories for consistency
 4. **Tag Preservation**: Use tags in test names: `test('[critical] Login flow', ...)`
 5. **Iterative Migration**: Migrate module by module, not all at once
+6. **Use Incremental Mode**: Let cache skip unchanged files (default behavior)
+7. **Force Regeneration**: Use `--force` when you improve AI prompts
+8. **Monitor Cache**: Check `migrate/.migrate-cache.json` for tracking
 
 ---
 
