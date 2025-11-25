@@ -1,9 +1,21 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as crypto from 'crypto';
 import OpenAI from 'openai';
 
 interface ReverseEngineerConfig {
   preserveStructure?: boolean;
+  forceRegeneration?: boolean;
+}
+
+interface MigrationCacheEntry {
+  hash: string;
+  processedAt: string;
+  generatedFiles: string[];
+}
+
+interface MigrationCache {
+  [sourceFile: string]: MigrationCacheEntry;
 }
 
 interface TestStructure {
@@ -45,6 +57,8 @@ export class ReverseEngineerAgent {
   private openai: OpenAI;
   private model: string;
   private preserveStructure: boolean;
+  private cacheFilePath: string;
+  private forceRegeneration: boolean;
 
   constructor(config: ReverseEngineerConfig = {}) {
     this.openai = new OpenAI({
@@ -52,15 +66,117 @@ export class ReverseEngineerAgent {
     });
     this.model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
     this.preserveStructure = config.preserveStructure !== false;
+    this.cacheFilePath = path.join(process.cwd(), 'migrate', '.migrate-cache.json');
+    this.forceRegeneration = config.forceRegeneration || false;
     
     console.info(`🔄 ReverseEngineerAgent initialized with model: ${this.model}`);
+    if (this.forceRegeneration) {
+      console.info(`⚡ Force regeneration mode enabled`);
+    }
   }
+
+  /**
+   * Load cache from disk
+   */
+  private loadCache(): MigrationCache {
+    if (!fs.existsSync(this.cacheFilePath)) {
+      return {};
+    }
+    try {
+      const content = fs.readFileSync(this.cacheFilePath, 'utf-8');
+      return JSON.parse(content);
+    } catch (error) {
+      console.warn(`⚠️  Failed to load cache, starting fresh`);
+      return {};
+    }
+  }
+
+  /**
+   * Save cache to disk
+   */
+  private saveCache(cache: MigrationCache): void {
+    try {
+      const dir = path.dirname(this.cacheFilePath);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+      fs.writeFileSync(this.cacheFilePath, JSON.stringify(cache, null, 2));
+    } catch (error: any) {
+      console.warn(`⚠️  Failed to save cache: ${error.message}`);
+    }
+  }
+
+  /**
+   * Calculate file hash using SHA-256
+   */
+  private calculateFileHash(filePath: string): string {
+    const content = fs.readFileSync(filePath, 'utf-8');
+    return crypto.createHash('sha256').update(content).digest('hex');
+  }
+
+  /**
+   * Check if file needs processing
+   */
+  private needsProcessing(filePath: string, cache: MigrationCache): boolean {
+    if (this.forceRegeneration) {
+      return true; // Force mode: always process
+    }
+
+    const fileName = path.basename(filePath);
+    const cacheEntry = cache[fileName];
+
+    if (!cacheEntry) {
+      return true; // Not in cache: needs processing
+    }
+
+    const currentHash = this.calculateFileHash(filePath);
+    if (currentHash !== cacheEntry.hash) {
+      return true; // File changed: needs processing
+    }
+
+    return false; // File unchanged: skip
+  }
+
+  /**
+   * Update cache after processing
+   */
+  private updateCache(
+    sourceFile: string,
+    generatedFiles: string[],
+    cache: MigrationCache
+  ): void {
+    const fileName = path.basename(sourceFile);
+    const hash = this.calculateFileHash(sourceFile);
+
+    cache[fileName] = {
+      hash,
+      processedAt: new Date().toISOString(),
+      generatedFiles
+    };
+
+    this.saveCache(cache);
+  }
+
 
   /**
    * Process a single Playwright file
    */
-  async processFile(playwrightFile: string, outputDir: string): Promise<void> {
+  async processFile(
+    playwrightFile: string,
+    outputDir: string,
+    cache?: MigrationCache
+  ): Promise<string[]> {
+    const loadedCache = cache || this.loadCache();
+    
+    // Check if processing is needed
+    if (!this.needsProcessing(playwrightFile, loadedCache)) {
+      console.info(`⏭️  Skipping ${path.basename(playwrightFile)} (unchanged)`);
+      return [];
+    }
+    
     console.info(`\n📖 Processing: ${path.basename(playwrightFile)}`);
+    
+    const generatedFiles: string[] = [];
     
     try {
       // 1. Parse the Playwright file
@@ -69,10 +185,15 @@ export class ReverseEngineerAgent {
       // 2. Infer Gherkin from test structure
       const feature = await this.inferGherkinFeature(structure, playwrightFile);
       
-      // 3. Write Gherkin files
-      await this.writeGherkinFiles(feature, playwrightFile, outputDir);
+      // 3. Write Gherkin files and track generated files
+      const files = await this.writeGherkinFiles(feature, playwrightFile, outputDir);
+      generatedFiles.push(...files);
+      
+      // 4. Update cache
+      this.updateCache(playwrightFile, generatedFiles, loadedCache);
       
       console.info(`✅ Successfully converted ${path.basename(playwrightFile)}`);
+      return generatedFiles;
     } catch (error: any) {
       console.error(`❌ Error processing ${playwrightFile}: ${error.message}`);
       throw error;
@@ -94,11 +215,21 @@ export class ReverseEngineerAgent {
     
     console.info(`Found ${files.length} Playwright test file(s)\n`);
     
+    // Load cache once
+    const cache = this.loadCache();
+    let processed = 0;
+    let skipped = 0;
+    
     for (const file of files) {
-      await this.processFile(file, outputDir);
+      const generatedFiles = await this.processFile(file, outputDir, cache);
+      if (generatedFiles.length > 0) {
+        processed++;
+      } else {
+        skipped++;
+      }
     }
     
-    console.info(`\n✅ Processed ${files.length} file(s) successfully`);
+    console.info(`\n📊 Summary: ${processed} processed, ${skipped} skipped`);
   }
 
   /**
@@ -379,7 +510,9 @@ Always respond with valid JSON matching the requested structure.`;
     feature: GherkinFeature,
     sourceFile: string,
     outputDir: string
-  ): Promise<void> {
+  ): Promise<string[]> {
+    const generatedFiles: string[] = [];
+    
     // Determine output directory structure
     const baseName = path.basename(sourceFile, path.extname(sourceFile));
     const featureDir = this.preserveStructure
@@ -400,8 +533,11 @@ Always respond with valid JSON matching the requested structure.`;
       const gherkinContent = this.formatGherkin(feature, scenario);
       
       fs.writeFileSync(featureFile, gherkinContent);
+      generatedFiles.push(path.relative(process.cwd(), featureFile));
       console.info(`  📝 Created: ${path.relative(process.cwd(), featureFile)}`);
     }
+    
+    return generatedFiles;
   }
 
   /**

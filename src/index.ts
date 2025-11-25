@@ -186,6 +186,7 @@ program
   .option('-i, --input <directory>', 'Input directory with Playwright tests', './migrate')
   .option('-o, --output <directory>', 'Output directory for Gherkin features', './features')
   .option('--no-preserve-structure', 'Do not preserve directory structure')
+  .option('-f, --force', 'Force regeneration of all files (ignore cache)')
   .action(async (files: string[], options: any) => {
     try {
       console.info(chalk.bold.cyan('\n🔄 Reverse Engineering: Playwright → Gherkin\n'));
@@ -194,7 +195,8 @@ program
       validateEnvironment();
       
       const agent = new ReverseEngineerAgent({
-        preserveStructure: options.preserveStructure
+        preserveStructure: options.preserveStructure,
+        forceRegeneration: options.force || false
       });
       
       if (files && files.length > 0) {
