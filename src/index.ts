@@ -1,8 +1,7 @@
-#!/usr/bin/env node
-
 import 'dotenv/config';
 import { QAOrchestrator } from './QAOrchestrator';
 import { GherkinAgent } from './agents/GherkinAgent';
+import { ReverseEngineerAgent } from './agents/ReverseEngineerAgent';
 import { program } from 'commander';
 import chalk from 'chalk';
 import * as fs from 'fs';
@@ -25,6 +24,7 @@ program
   .option('-t, --tags <tags>', 'Tags to filter (e.g: @web,@critical)')
   .option('-c, --config <config>', 'Configuration file', './config/agents.config.js')
   .option('-f, --force', 'Force regeneration of cached plans and tests')
+  .option('-u, --url <url>', 'Base URL for web tests (overrides WEB_APP_URL env variable)')
   .action(async (features: string[], options: any) => {
     try {
       console.info(chalk.bold.cyan('\n🤖 QA Agents - Intelligent Testing System\n'));
@@ -35,10 +35,24 @@ program
       let featureFiles: string[] = [];
 
       if (features && features.length > 0) {
-        // Specific files provided
-        featureFiles = features.map(f => path.resolve(f));
+        // Specific files or directories provided
+        for (const item of features) {
+          const itemPath = path.resolve(item);
+          
+          if (!fs.existsSync(itemPath)) {
+            console.error(chalk.red(`❌ Path not found: ${itemPath}`));
+            process.exit(1);
+          }
+          
+          if (fs.statSync(itemPath).isDirectory()) {
+            // Recursively find .feature files in directory
+            featureFiles.push(...findFeatureFiles(itemPath));
+          } else if (itemPath.endsWith('.feature')) {
+            featureFiles.push(itemPath);
+          }
+        }
       } else {
-        // Search in directory
+        // Search in default directory
         const featuresDir = path.resolve(options.dir);
         
         if (!fs.existsSync(featuresDir)) {
@@ -46,9 +60,7 @@ program
           process.exit(1);
         }
 
-        featureFiles = fs.readdirSync(featuresDir)
-          .filter(file => file.endsWith('.feature'))
-          .map(file => path.join(featuresDir, file));
+        featureFiles = findFeatureFiles(featuresDir);
       }
 
       if (featureFiles.length === 0) {
@@ -66,6 +78,12 @@ program
       // Add force flag to config
       if (options.force) {
         config.forceRegenerate = true;
+      }
+      
+      // Override WEB_APP_URL if --url is provided
+      if (options.url) {
+        process.env.WEB_APP_URL = options.url;
+        console.info(chalk.gray(`Using base URL: ${options.url}\n`));
       }
       
       const orchestrator = new QAOrchestrator(config);
@@ -161,6 +179,87 @@ program
       console.info(chalk.white('   --stats  : Show cache statistics\n'));
     }
   });
+
+program
+  .command('reverse [files...]')
+  .description('Convert Playwright tests to Gherkin features')
+  .option('-i, --input <directory>', 'Input directory with Playwright tests', './migrate')
+  .option('-o, --output <directory>', 'Output directory for Gherkin features', './features')
+  .option('--no-preserve-structure', 'Do not preserve directory structure')
+  .action(async (files: string[], options: any) => {
+    try {
+      console.info(chalk.bold.cyan('\n🔄 Reverse Engineering: Playwright → Gherkin\n'));
+      
+      // Validate configuration
+      validateEnvironment();
+      
+      const agent = new ReverseEngineerAgent({
+        preserveStructure: options.preserveStructure
+      });
+      
+      if (files && files.length > 0) {
+        // Process specific files
+        console.info(chalk.gray(`Processing ${files.length} file(s)...\n`));
+        
+        for (const file of files) {
+          const filePath = path.resolve(file);
+          
+          if (!fs.existsSync(filePath)) {
+            console.error(chalk.red(`❌ File not found: ${filePath}`));
+            continue;
+          }
+          
+          await agent.processFile(filePath, path.resolve(options.output));
+        }
+      } else {
+        // Process entire directory
+        const inputDir = path.resolve(options.input);
+        
+        if (!fs.existsSync(inputDir)) {
+          console.error(chalk.red(`❌ Input directory not found: ${inputDir}`));
+          process.exit(1);
+        }
+        
+        await agent.processDirectory(inputDir, path.resolve(options.output));
+      }
+      
+      console.info(chalk.green('\n✅ Reverse engineering completed successfully!\n'));
+      console.info(chalk.gray(`Generated Gherkin files are in: ${path.resolve(options.output)}`));
+      console.info(chalk.gray(`\nYou can now run: npm run test ${options.output}\n`));
+      
+    } catch (error: any) {
+      console.error(chalk.red(`\n❌ Fatal error: ${error.message}`));
+      console.error(chalk.gray(error.stack));
+      process.exit(1);
+    }
+  });
+
+/**
+ * Recursively find all .feature files in a directory
+ */
+function findFeatureFiles(dir: string): string[] {
+  const files: string[] = [];
+  
+  const traverse = (currentDir: string) => {
+    const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(currentDir, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Skip hidden directories and node_modules
+        if (!entry.name.startsWith('.') && entry.name !== 'node_modules') {
+          traverse(fullPath);
+        }
+      } else if (entry.isFile() && entry.name.endsWith('.feature')) {
+        files.push(fullPath);
+      }
+    }
+  };
+  
+  traverse(dir);
+  return files;
+}
 
 /**
  * Validate required environment variables

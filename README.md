@@ -132,6 +132,9 @@ npm test
 # Run specific tests
 npm start run features/web-login.feature
 
+# Run tests from a directory (recursive)
+npm start run features/checkout/
+
 # Web tests only
 npm run test:web
 
@@ -146,6 +149,45 @@ npm start validate
 
 # Initialize project
 npm start init
+```
+
+### 🔄 Reverse Engineering: Migrate Playwright → Gherkin
+
+Convert existing Playwright tests to Gherkin features using AI:
+
+```bash
+# Convert all tests in ./migrate directory
+npm run reverse
+
+# Convert specific file
+npm run reverse path/to/test.spec.ts
+
+# Convert multiple files
+npm start reverse file1.spec.ts file2.spec.ts
+
+# Custom input/output directories
+npm start reverse -- --input ./tests --output ./features
+
+# Disable directory structure preservation
+npm start reverse -- --no-preserve-structure
+```
+
+**What it does:**
+- 🤖 Uses AI to infer business intent from technical code
+- 📝 Generates human-readable Gherkin scenarios
+- 🏷️ Preserves tags from test names
+- 📁 Maintains directory structure (optional)
+- ✅ Creates one `.feature` file per test scenario
+
+**Example:**
+
+```bash
+# Place your Playwright tests in ./migrate/
+npm run reverse
+
+# Generated Gherkin files will be in ./features/
+# Now you can run them:
+npm test
 ```
 
 ### Programmatic Usage
@@ -220,6 +262,13 @@ runTests();
 - Identifies root cause
 - Suggests immediate and long-term fixes
 - Determines severity and assigns responsibility
+
+#### 5. **ReverseEngineerAgent** 🆕
+- Converts existing Playwright tests to Gherkin features
+- Uses AI to infer business intent from technical code
+- Accelerates migration to vision-driven testing
+- Preserves tags and directory structure
+- Generates human-readable scenarios automatically
 
 ## 📊 Reports
 
@@ -401,20 +450,24 @@ qa-agents/
 │   ├── web-login.feature
 │   ├── web-event-management.feature
 │   └── salesforce-capacity-service.feature
+├── migrate/                   # Playwright tests to convert (optional)
+│   └── *.spec.ts
 ├── src/
 │   ├── agents/
-│   │   ├── GherkinAgent.js
-│   │   ├── WebExecutorAgent.js
-│   │   ├── SalesforceExecutorAgent.js
-│   │   └── DiagnosticAgent.js
+│   │   ├── GherkinAgent.ts
+│   │   ├── WebExecutorAgent.ts
+│   │   ├── SalesforceExecutorAgent.ts
+│   │   ├── DiagnosticAgent.ts
+│   │   └── ReverseEngineerAgent.ts  # NEW: Playwright → Gherkin
 │   ├── examples/
 │   │   ├── run-test.js
 │   │   ├── test-salesforce.js
 │   │   └── demo.js
-│   ├── QAOrchestrator.js     # Main orchestrator
-│   └── index.js              # CLI
+│   ├── QAOrchestrator.ts     # Main orchestrator
+│   └── index.ts              # CLI
 ├── reports/                   # Generated reports
 ├── screenshots/               # Test screenshots
+├── .features-cache/           # Generated Playwright tests
 ├── package.json
 ├── .env                       # Environment variables
 └── README.md
@@ -468,12 +521,14 @@ jobs:
 - [x] Basic agents (Gherkin, Web, Salesforce, Diagnostic)
 - [x] Collaborative orchestrator
 - [x] HTML/JSON reports
+- [x] **Reverse Engineering: Playwright → Gherkin** ✅
 - [ ] API Testing Agent
 - [ ] Visual Regression Testing
 - [ ] Jira/TestRail integration
 - [ ] Real-time web dashboard
 - [ ] Parallel test execution
 - [ ] Support for more frameworks (Vue, Svelte)
+- [ ] Mobile testing (iOS/Android)
 
 ## 🤝 Contributing
 

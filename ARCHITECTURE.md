@@ -66,6 +66,18 @@ This separation enables:
 The system follows a **layered architecture** where each layer has a single, well-defined responsibility:
 
 ```
+                    ┌─────────────────────────────────────┐
+                    │   Legacy Playwright Tests           │
+                    │   (Optional Migration Path)         │
+                    └──────────────┬──────────────────────┘
+                                   │
+                                   ▼
+                    ┌─────────────────────────────────────┐
+                    │   ReverseEngineerAgent              │
+                    │   (AI-powered migration)            │
+                    └──────────────┬──────────────────────┘
+                                   │
+                                   ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Business Layer                           │
 │              (Gherkin Feature Files)                        │
@@ -314,6 +326,173 @@ Vision AI serves as the **intelligence layer** that understands UI context and i
 
 ---
 
+## Reverse Engineering: Playwright → Gherkin
+
+### 5. **ReverseEngineerAgent** (Migration Layer)
+
+The `ReverseEngineerAgent` enables **migration from existing Playwright tests to Gherkin features**. This agent uses AI to analyze technical test code and infer the underlying business intent, automatically generating human-readable Gherkin scenarios.
+
+**Purpose:**
+- Convert legacy Playwright tests into maintainable Gherkin features
+- Preserve business logic while adopting the new architecture
+- Accelerate migration to the vision-driven testing approach
+
+**How it works:**
+
+1. **Parse Playwright Files**
+   - Scans `.spec.ts`, `.spec.js`, `.test.ts`, `.test.js` files
+   - Extracts test structure using regex patterns
+   - Identifies `test.describe()` blocks and individual `test()` cases
+   - Captures test names, code blocks, and embedded tags
+
+2. **AI-Powered Inference**
+   - Sends test code to GPT-4o with specialized prompts
+   - AI analyzes technical code to understand business intent
+   - Converts technical actions into natural language steps
+   - Generates Given/When/Then scenarios following Gherkin best practices
+
+3. **Gherkin Generation**
+   - Creates one `.feature` file per scenario
+   - Preserves directory structure (optional)
+   - Maintains tags from original tests
+   - Formats output following standard Gherkin syntax
+
+**Example Conversion:**
+
+**Input (Playwright):**
+```javascript
+test.describe('Free checkout flow', () => {
+  test('should complete registration without payment', async ({ page }) => {
+    await navigateToEvent(page);
+    await selectTickets(page, 1);
+    await fillAttendeeInfo(page, {
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john@example.com'
+    });
+    await submitRegistration(page);
+    await verifyRegistrationSuccess(page);
+  });
+});
+```
+
+**Output (Gherkin):**
+```gherkin
+Feature: Free checkout flow
+  Validate free ticket registration without payment gateway
+
+Scenario: Complete registration without payment
+  Given I navigate to the event registration page
+  When I select 1 ticket
+  And I fill attendee information:
+    | First Name | John              |
+    | Last Name  | Doe               |
+    | Email      | john@example.com  |
+  And I submit the registration
+  Then I should see registration success confirmation
+```
+
+**CLI Usage:**
+
+```bash
+# Convert a single file
+npm run reverse path/to/test.spec.ts
+
+# Convert entire directory
+npm run reverse
+
+# Specify custom input/output directories
+npm start reverse -- --input ./tests --output ./features
+
+# Process specific files
+npm start reverse file1.spec.ts file2.spec.ts
+
+# Disable directory structure preservation
+npm start reverse -- --no-preserve-structure
+```
+
+**Configuration:**
+
+The agent can be configured programmatically:
+
+```typescript
+const agent = new ReverseEngineerAgent({
+  preserveStructure: true  // Maintain original directory structure
+});
+
+// Process single file
+await agent.processFile('tests/login.spec.ts', './features');
+
+// Process entire directory
+await agent.processDirectory('./tests', './features');
+```
+
+**AI Prompt Strategy:**
+
+The agent uses a specialized system prompt that instructs the AI to:
+- Understand business context from method names and assertions
+- Create natural language steps readable by non-technical stakeholders
+- Follow Gherkin best practices (Given/When/Then structure)
+- Preserve important details (values, quantities, conditions)
+- Keep steps concise and actionable
+
+**Fallback Mechanism:**
+
+If AI inference fails (API error, timeout, etc.), the agent falls back to basic conversion:
+- Uses test names as scenario names
+- Creates generic Given/When/Then placeholders
+- Preserves test structure and tags
+- Ensures migration continues even without AI
+
+**Benefits:**
+
+- ✅ **Accelerated Migration**: Convert hundreds of tests automatically
+- ✅ **Business Intent Preservation**: AI infers "why" behind technical "how"
+- ✅ **Consistency**: All Gherkin follows same format and best practices
+- ✅ **Tag Preservation**: Maintains test categorization and filtering
+- ✅ **Directory Structure**: Optional preservation of original organization
+- ✅ **Iterative Refinement**: Generated Gherkin can be manually improved
+
+**Workflow Integration:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              Legacy Playwright Tests                        │
+│         (tests/*.spec.ts, tests/*.spec.js)                  │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│              ReverseEngineerAgent                           │
+│                                                             │
+│   1. Parse test structure (regex)                          │
+│   2. Infer business intent (AI)                             │
+│   3. Generate Gherkin features                              │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│              Gherkin Feature Files                          │
+│              (features/*.feature)                           │
+└───────────────────────────┬─────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────────┐
+│              QA Orchestrator                                │
+│         (Executes with Vision AI)                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Best Practices:**
+
+1. **Review Generated Gherkin**: AI inference is good but not perfect - review and refine
+2. **Preserve Original Tests**: Keep Playwright tests until Gherkin versions are validated
+3. **Batch Processing**: Process entire directories for consistency
+4. **Tag Preservation**: Use tags in test names: `test('[critical] Login flow', ...)`
+5. **Iterative Migration**: Migrate module by module, not all at once
+
+---
+
 ## Benefits of This Architecture
 
 ### 🎯 **True Reusability**
@@ -523,6 +702,7 @@ async select(step) { /* generic logic */ }
 
 ## Future Enhancements
 
+- [x] **Reverse Engineering**: Playwright → Gherkin conversion with AI ✅
 - [ ] Multi-browser support (Firefox, Safari)
 - [ ] Mobile/responsive testing
 - [ ] Visual regression detection
@@ -530,7 +710,9 @@ async select(step) { /* generic logic */ }
 - [ ] A/B testing support
 - [ ] Claude Vision as alternative to GPT-4o
 - [ ] Self-healing selector updates
-- [ ] Test generation from user recordings
+- [ ] Batch test generation from user recordings
+- [ ] Integration with CI/CD pipelines (GitHub Actions, Jenkins)
+- [ ] Real-time test monitoring dashboard
 
 ---
 
